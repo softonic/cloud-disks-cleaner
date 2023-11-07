@@ -1,2 +1,4 @@
-k8s-clean-disks-GCP-unused
+# binary
 cloud-disks-cleaner
+# editor 
+.vscode
