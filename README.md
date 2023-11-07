@@ -2,14 +2,14 @@
 
 [![Version Widget]][Version] [![License Widget]][License] [![GoReportCard Widget]][GoReportCard] [![DockerHub Widget]][DockerHub]
 
-[Version]: https://github.com/softonic/kube-gcp-disks-roomba/releases
-[Version Widget]: https://img.shields.io/github/release/softonic/kube-gcp-disks-roomba.svg?maxAge=60
+[Version]: https://github.com/softonic/cloud-disks-cleaner/releases
+[Version Widget]: https://img.shields.io/github/release/softonic/cloud-disks-cleaner.svg?maxAge=60
 [License]: http://www.apache.org/licenses/LICENSE-2.0.txt
 [License Widget]: https://img.shields.io/badge/license-APACHE2-1eb0fc.svg
-[GoReportCard]: https://goreportcard.com/report/softonic/kube-gcp-disks-roomba
-[GoReportCard Widget]: https://goreportcard.com/badge/softonic/kube-gcp-disks-roomba
-[DockerHub]: https://hub.docker.com/r/softonic/kube-gcp-disks-roomba
-[DockerHub Widget]: https://img.shields.io/docker/pulls/softonic/kube-gcp-disks-roomba.svg
+[GoReportCard]: https://goreportcard.com/report/softonic/cloud-disks-cleaner
+[GoReportCard Widget]: https://goreportcard.com/badge/softonic/cloud-disks-cleaner
+[DockerHub]: https://hub.docker.com/r/softonic/cloud-disks-cleaner
+[DockerHub Widget]: https://img.shields.io/docker/pulls/softonic/cloud-disks-cleaner.svg
 
 
 Script that runs as a cronjob resource in kubernetes in GKE environments.
