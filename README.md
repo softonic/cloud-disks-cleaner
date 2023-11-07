@@ -13,8 +13,9 @@
 
 
 Script that runs as a cronjob resource in kubernetes in GKE environments.
-Removes disks from GCP that are not in use, checking first if the storage class is the default (standard).
-Understanding that standard storage class has reclaimPolicy Delete.
+Removes disks from GCP that are not in use. 
+If PV does not exists in kubernetes, we can remove the disk in GCP.
+If PV does exists, but pvc is not bound to the pv, we can remove the disk in GCP.
 
 ##### Install
 
@@ -22,4 +23,3 @@ Understanding that standard storage class has reclaimPolicy Delete.
 GO111MODULE=on
 go build .
 ```
-
