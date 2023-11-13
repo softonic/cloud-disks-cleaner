@@ -9,16 +9,16 @@ import (
 
 // GCPChecker es una estructura que implementa la interfaz Checker para GCP.
 type GCPChecker struct {
-	service   *compute.Service // servicio de GCP para interactuar con los recursos de GCP.
-	projectID string           // ID del proyecto de GCP.
-	zone      string           // Zona de GCP en la que se deben verificar los recursos.
+	service   ComputeService // servicio de GCP para interactuar con los recursos de GCP.
+	projectID string         // ID del proyecto de GCP.
+	zone      string         // Zona de GCP en la que se deben verificar los recursos.
 }
 
 // NewGCPChecker crea una nueva instancia de GCPChecker.
-func NewGCPChecker(client compute.Service, projectID string, zone string) (*GCPChecker, error) {
+func NewGCPChecker(service ComputeService, projectID string, zone string) (*GCPChecker, error) {
 
 	return &GCPChecker{
-		service:   &client,
+		service:   service,
 		projectID: projectID,
 		zone:      zone,
 	}, nil
@@ -27,7 +27,7 @@ func NewGCPChecker(client compute.Service, projectID string, zone string) (*GCPC
 func (c *GCPChecker) IsResourceUnused(resourceID string) (bool, error) {
 	ctx := context.Background()
 
-	disk, err := c.service.Disks.Get(c.projectID, c.zone, resourceID).Context(ctx).Do()
+	disk, err := c.service.DisksGet(ctx, c.projectID, c.zone, resourceID)
 	if err != nil {
 		return false, err // Si hay un error, retorna false y el error.
 	}
@@ -42,7 +42,7 @@ func (c *GCPChecker) IsResourceUnused(resourceID string) (bool, error) {
 func (c *GCPChecker) ListResources() ([]interface{}, error) {
 	ctx := context.Background()
 
-	req := c.service.Disks.List(c.projectID, c.zone)
+	req := c.service.DisksList(c.projectID, c.zone)
 	var disks []compute.Disk
 	var disksNames []string
 	var resources []interface{}

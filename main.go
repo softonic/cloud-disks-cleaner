@@ -2,12 +2,17 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"os"
 
+	"github.com/softonic/cloud-disks-cleaner/pkg/errorhandling"
 	"github.com/softonic/cloud-disks-cleaner/pkg/gcp"
-	"github.com/softonic/cloud-disks-cleaner/pkg/k8s"
+	"github.com/softonic/cloud-disks-cleaner/pkg/kubernetes"
 	"github.com/softonic/cloud-disks-cleaner/pkg/usage"
-	"google.golang.org/api/compute/v1"
+
+	"github.com/softonic/cloud-disks-cleaner/internal/app"
+
 	_ "k8s.io/apimachinery/pkg/api/resource"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog"
@@ -17,103 +22,87 @@ func init() {
 	klog.InitFlags(nil)
 }
 
-func processUnusedDisks(gcpChecker usage.Checker, k8sChecker usage.Checker) ([]string, error) {
-
-	disksToBeRemoved := []string{}
-
-	computeDisks, err := gcpChecker.ListResources()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, diskInterface := range computeDisks {
-		disk, ok := diskInterface.(*compute.Disk)
-		if !ok {
-			klog.Errorf("Error: expected item of type compute.Disk, got %T", diskInterface)
-			continue // skip to the next disk if there's a type mismatch
-		}
-		isNotUsedByAnyNode, err := gcpChecker.IsResourceUnused(disk.Name)
-		if err == nil && !isNotUsedByAnyNode {
-			continue
-		} else if err != nil {
-			klog.Errorf("Error checking usage of disk %s: %v", disk.Name, err)
-			return nil, err
-		}
-
-		isUnused, err := k8sChecker.IsResourceUnused(disk.Name)
-		if err != nil {
-			klog.Errorf("Error checking usage of disk %s: %v", disk.Name, err)
-			continue // skip to the next disk if there's an error
-		}
-
-		if isUnused {
-			disksToBeRemoved = append(disksToBeRemoved, disk.Name)
-		}
-
-	}
-	return disksToBeRemoved, nil
-}
-
-func removeUnusedDisks(gcpDeleter *gcp.GCPDeleter, disks []string) {
-
-	for _, disk := range disks {
-		klog.Infof("Delete disk %s", disk)
-		/* 		err := gcpDeleter.DeleteResource("disk", disk)
-		   		if err != nil {
-		   			klog.Errorf("Failed to delete disk %s: %v", disk, err)
-		   			continue
-		   		} */
-	}
-
-}
-
 func main() {
 
-	projectID := os.Getenv("PROJECT_ID")
-	zone := os.Getenv("ZONE")
-
-	if projectID == "" || zone == "" {
-		klog.Fatalf("PROJECT_ID and ZONE environment variables are required")
+	// Load Configuration
+	projectID, zone, err := loadConfiguration()
+	if err != nil {
+		errorhandling.HandleCriticalError(err) // Llama a la función de manejo de errores críticos.
 	}
 
+	// Initialize services
+	gcpChecker, gcpDeleter, k8sChecker, err := initializeServices(projectID, zone)
+	if err != nil {
+		errorhandling.HandleCriticalError(err)
+	}
+
+	// Execute the app
+	runApplication(gcpChecker, gcpDeleter, k8sChecker)
+
+}
+
+func loadConfiguration() (projectID string, zone string, err error) {
+	projectID = os.Getenv("PROJECT_ID")
+	zone = os.Getenv("ZONE")
+	if projectID == "" || zone == "" {
+		return "", "", errors.New("PROJECT_ID and ZONE environment variables are required")
+	}
+	return projectID, zone, nil
+}
+
+func initializeServices(projectID string, zone string) (usage.Checker, *gcp.GCPDeleter, usage.Checker, error) {
 	// GCP init
 
-	client, err := gcp.NewClient()
+	// client, err := gcp.NewClient()
+	// if err != nil {
+	// 	return nil, nil, nil, err
+	// }
+
+	ctx := context.Background()
+
+	computeService, err := gcp.NewComputeService(ctx)
 	if err != nil {
-		klog.Fatalf("Failed to create gcp clientset: %v", err)
-		return
+		klog.Fatalf("Failed to create GCP compute service: %v", err)
 	}
 
-	gcpChecker, err := gcp.NewGCPChecker(*client, projectID, zone)
+	gcpChecker, err := gcp.NewGCPChecker(computeService, projectID, zone)
 	if err != nil {
 		klog.Errorf("Failed to create GCP checker: %v", err)
+		return nil, nil, nil, err
 	}
 
-	gcpDeleter, err := gcp.NewGCPDeleter(*client, projectID, zone)
+	gcpDeleter, err := gcp.NewGCPDeleter(computeService, projectID, zone)
 	if err != nil {
-		klog.Errorf("Failed to instantiate gcp deleter: %v", err)
+		return nil, nil, nil, err
 	}
 
 	// k8s init
 
-	clientset, err := k8s.NewClient(false)
+	k8sConfig := "/Users/santiago.nunezcacho/.kube/config"
+
+	clientset, err := kubernetes.NewKubernetesService(false, k8sConfig)
 	if err != nil {
-		klog.Fatalf("Failed to create k8s clientset: %v", err)
-		return
+		return nil, nil, nil, err
 	}
 
-	k8sChecker, err := k8s.NewK8sChecker(*clientset)
+	k8sChecker, err := kubernetes.NewK8sChecker(clientset)
 	if err != nil {
-		klog.Errorf("Failed to create k8s checker: %v", err)
+		//klog.Errorf("Failed to create k8s checker: %v", err)
+		return nil, nil, nil, err
 	}
 
+	return gcpChecker, gcpDeleter, k8sChecker, nil
+
+}
+
+func runApplication(gcpChecker usage.Checker, gcpDeleter *gcp.GCPDeleter, k8sChecker usage.Checker) {
 	// app
 
-	disks, err := processUnusedDisks(gcpChecker, k8sChecker)
+	disks, err := app.ProcessUnusedDisks(gcpChecker, k8sChecker)
 	if err != nil {
 		klog.Errorf("Failed to process unused disks: %v", err)
 	}
 
-	removeUnusedDisks(gcpDeleter, disks)
+	app.RemoveUnusedDisks(gcpDeleter, disks)
 
 }

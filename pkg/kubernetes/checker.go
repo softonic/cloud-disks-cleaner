@@ -1,4 +1,4 @@
-package k8s
+package kubernetes
 
 import (
 	"errors"
@@ -7,8 +7,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	_ "k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog"
 )
@@ -16,11 +14,11 @@ import (
 // K8sChecker es una estructura que implementa la interfaz Checker para Kubernetes.
 type K8sChecker struct {
 	//clientset kubernetes.Interface // Cliente de Kubernetes para interactuar con el cluster.
-	clientset kubernetes.Clientset
+	clientset kubernetesService
 }
 
 // NewK8sChecker crea una nueva instancia de K8sChecker.
-func NewK8sChecker(clientset kubernetes.Clientset) (*K8sChecker, error) {
+func NewK8sChecker(clientset kubernetesService) (*K8sChecker, error) {
 	return &K8sChecker{
 		clientset: clientset,
 	}, nil
@@ -86,7 +84,7 @@ func (c *K8sChecker) getPVFromDisk(diskName string) (*v1.PersistentVolume, error
 		return nil, errors.New("clientset is nil")
 	}
 
-	pvList, err := c.clientset.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
+	pvList, err := c.clientset.PersistentVolumesList()
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +113,7 @@ func (c *K8sChecker) getPVCFromPV(pv *v1.PersistentVolume) (*v1.PersistentVolume
 	namespace := pv.Spec.ClaimRef.Namespace
 	name := pv.Spec.ClaimRef.Name
 
-	pvc, err := c.clientset.CoreV1().PersistentVolumeClaims(namespace).Get(name, metav1.GetOptions{})
+	pvc, err := c.clientset.PersistentVolumeClaimsGet(name, namespace)
 	if err != nil {
 		// Error al obtener el PVC.
 		return nil, err
@@ -126,7 +124,7 @@ func (c *K8sChecker) getPVCFromPV(pv *v1.PersistentVolume) (*v1.PersistentVolume
 
 func (c *K8sChecker) isPVCBoundToPV(pvName string, pvcNamespace string, pvcName string) (bool, error) {
 	// Obtén el PVC del clúster
-	pvc, err := c.clientset.CoreV1().PersistentVolumeClaims(pvcNamespace).Get(pvcName, metav1.GetOptions{})
+	pvc, err := c.clientset.PersistentVolumeClaimsGet(pvcName, pvcNamespace)
 	if err != nil {
 		return false, err
 	}

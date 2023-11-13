@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ashwanthkumar/slack-go-webhook"
-	"github.com/softonic/k8s-clean-disks-GCP-unused/pkg/common"
+	"github.com/softonic/cloud-disks-cleaner/pkg/common"
 	"k8s.io/klog"
 )
 
