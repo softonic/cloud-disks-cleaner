@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
 
 	"github.com/softonic/cloud-disks-cleaner/pkg/errorhandling"
 	"github.com/softonic/cloud-disks-cleaner/pkg/gcp"
@@ -41,6 +42,18 @@ func main() {
 
 }
 
+func getKubeConfigPath() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		// Manejar el error adecuadamente, por ejemplo, podrías retornar un error.
+		klog.Errorf("Error al obtener el directorio home: %v", err)
+		return ""
+	}
+
+	kubeConfigPath := filepath.Join(homeDir, ".kube", "config")
+	return kubeConfigPath
+}
+
 func loadConfiguration() (projectID string, zone string, err error) {
 	projectID = os.Getenv("PROJECT_ID")
 	zone = os.Getenv("ZONE")
@@ -51,12 +64,6 @@ func loadConfiguration() (projectID string, zone string, err error) {
 }
 
 func initializeServices(projectID string, zone string) (usage.Checker, *gcp.GCPDeleter, usage.Checker, error) {
-	// GCP init
-
-	// client, err := gcp.NewClient()
-	// if err != nil {
-	// 	return nil, nil, nil, err
-	// }
 
 	ctx := context.Background()
 
@@ -78,9 +85,9 @@ func initializeServices(projectID string, zone string) (usage.Checker, *gcp.GCPD
 
 	// k8s init
 
-	k8sConfig := "/Users/santiago.nunezcacho/.kube/config"
+	kubeConfig := getKubeConfigPath()
 
-	clientset, err := kubernetes.NewKubernetesService(false, k8sConfig)
+	clientset, err := kubernetes.NewKubernetesService(false, kubeConfig)
 	if err != nil {
 		return nil, nil, nil, err
 	}
