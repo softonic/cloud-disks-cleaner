@@ -48,11 +48,11 @@ func RemoveUnusedDisks(gcpDeleter *gcp.GCPDeleter, disks []string) {
 
 	for _, disk := range disks {
 		klog.Infof("Delete disk %s", disk)
-		/* 		err := gcpDeleter.DeleteResource("disk", disk)
-		   		if err != nil {
-		   			klog.Errorf("Failed to delete disk %s: %v", disk, err)
-		   			continue
-		   		} */
+		err := gcpDeleter.DeleteResource("disk", disk)
+		if err != nil {
+			klog.Errorf("Failed to delete disk %s: %v", disk, err)
+			continue
+		}
 	}
 
 }

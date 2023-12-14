@@ -91,12 +91,14 @@ func (c *K8sChecker) getPVFromDisk(diskName string) (*v1.PersistentVolume, error
 
 	for _, pv := range pvList.Items {
 		if pv.Spec.GCEPersistentDisk != nil && pv.Spec.GCEPersistentDisk.PDName == diskName {
+			klog.Infof("Entra en gce persistent disk. PV => %s", pv.Name)
 			return &pv, nil // return the PV found for the GCE traditional disk
 		}
 
 		// Para el caso de un disco CSI, el identificador del disco podría ser parte de volumeHandle.
 		// La comparación es más relajada aquí, solo comprobamos si el nombre del disco es parte de volumeHandle.
 		if pv.Spec.CSI != nil && strings.Contains(pv.Spec.CSI.VolumeHandle, diskName) {
+			klog.Infof("Entra en CSI PV => %s", pv.Name)
 			return &pv, nil // return the PV found for the CSI disk
 		}
 	}
