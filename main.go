@@ -32,13 +32,13 @@ func main() {
 	}
 
 	// Initialize services
-	gcpChecker, gcpDeleter, k8sChecker, err := initializeServices(projectID, zone)
+	gcpChecker, gcpDeleter, k8sChecker, k8sDeleter, err := initializeServices(projectID, zone)
 	if err != nil {
 		errorhandling.HandleCriticalError(err)
 	}
 
 	// Execute the app
-	runApplication(gcpChecker, gcpDeleter, k8sChecker)
+	runApplication(gcpChecker, gcpDeleter, k8sChecker, k8sDeleter)
 
 }
 
@@ -63,7 +63,7 @@ func loadConfiguration() (projectID string, zone string, err error) {
 	return projectID, zone, nil
 }
 
-func initializeServices(projectID string, zone string) (usage.Checker, *gcp.GCPDeleter, usage.Checker, error) {
+func initializeServices(projectID string, zone string) (usage.Checker, *gcp.GCPDeleter, usage.Checker, *kubernetes.K8sDeleter, error) {
 
 	ctx := context.Background()
 
@@ -75,12 +75,12 @@ func initializeServices(projectID string, zone string) (usage.Checker, *gcp.GCPD
 	gcpChecker, err := gcp.NewGCPChecker(computeService, projectID, zone)
 	if err != nil {
 		klog.Errorf("Failed to create GCP checker: %v", err)
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	gcpDeleter, err := gcp.NewGCPDeleter(computeService, projectID, zone)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	// k8s init
@@ -89,27 +89,34 @@ func initializeServices(projectID string, zone string) (usage.Checker, *gcp.GCPD
 
 	clientset, err := kubernetes.NewKubernetesService(false, kubeConfig)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	k8sChecker, err := kubernetes.NewK8sChecker(clientset)
 	if err != nil {
 		//klog.Errorf("Failed to create k8s checker: %v", err)
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
-	return gcpChecker, gcpDeleter, k8sChecker, nil
+	// Remove the unused variable declaration and assignment
+	k8sDeleter, err := kubernetes.NewK8sDeleter(clientset)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	return gcpChecker, gcpDeleter, k8sChecker, k8sDeleter, nil
 
 }
 
-func runApplication(gcpChecker usage.Checker, gcpDeleter *gcp.GCPDeleter, k8sChecker usage.Checker) {
+func runApplication(gcpChecker usage.Checker, gcpDeleter *gcp.GCPDeleter, k8sChecker usage.Checker, k8sDeleter *kubernetes.K8sDeleter) {
 	// app
 
-	disks, err := app.ProcessUnusedDisks(gcpChecker, k8sChecker)
+	disks, pvs, err := app.ProcessUnusedDisks(gcpChecker, k8sChecker)
 	if err != nil {
 		klog.Errorf("Failed to process unused disks: %v", err)
 	}
 
 	app.RemoveUnusedDisks(gcpDeleter, disks)
+	app.RemoveUnusedPVs(k8sDeleter, pvs)
 
 }

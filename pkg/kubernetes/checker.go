@@ -31,16 +31,16 @@ func NewK8sChecker(clientset kubernetesService) (*K8sChecker, error) {
 // se puede borrar
 // Si existe el PV y el PVC al que está asociado tambien existe, aunque el estado sea Released
 // no borraremos el disco, como medida de precaucion.
-func (c *K8sChecker) IsResourceUnused(resourceID string) (bool, error) {
+func (c *K8sChecker) IsResourceUnused(resourceID string) (bool, string, error) {
 	// En este caso, asumiremos que resourceID es el nombre del PersistentVolume en Kubernetes.
-	pv, err := c.getPVFromDisk(resourceID)
+	pv, err := c.GetPVFromDisk(resourceID)
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 
 	if pv == nil {
 		klog.Infof("PV was not found. Disk => %s", resourceID)
-		return true, nil
+		return true, "", nil
 	}
 
 	// Verifica si el PersistentVolume está en uso.
@@ -56,14 +56,14 @@ func (c *K8sChecker) IsResourceUnused(resourceID string) (bool, error) {
 			// El PVC no se encontró, por lo que el recurso no está siendo utilizado.
 			// Pero por seguridad no vamos a eliminar el disco. Quiza será utilizado en el futuro.
 			klog.Infof("The pvc bind to the disk: %s does not exists", resourceID)
-			return false, nil
+			return false, "", nil
 		}
-		return false, err
+		return false, "", err
 	}
 
 	isBound, err := c.isPVCBoundToPV(pv.Name, pvc.Namespace, pvc.Name)
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 
 	isUnused := !isBound // Invierte la lógica: si no está vinculado, entonces no está en uso.
@@ -71,7 +71,7 @@ func (c *K8sChecker) IsResourceUnused(resourceID string) (bool, error) {
 		klog.Infof("PV was found, PVC was found, but pvc and pv are not binded. Disk => %s", resourceID)
 	}
 
-	return isUnused, nil // Retorna el resultado de la verificación y nil para el error.
+	return isUnused, pv.Name, nil // Retorna el resultado de la verificación y nil para el error.
 }
 
 func (c *K8sChecker) ListResources() ([]interface{}, error) {
@@ -79,7 +79,7 @@ func (c *K8sChecker) ListResources() ([]interface{}, error) {
 	return nil, nil
 }
 
-func (c *K8sChecker) getPVFromDisk(diskName string) (*v1.PersistentVolume, error) {
+func (c *K8sChecker) GetPVFromDisk(diskName string) (*v1.PersistentVolume, error) {
 	if c == nil {
 		return nil, errors.New("clientset is nil")
 	}

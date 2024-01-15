@@ -36,6 +36,7 @@ func NewKubernetesService(inCluster bool, k8sConfig string) (kubernetesService, 
 type kubernetesService interface {
 	PersistentVolumesList() (*v1.PersistentVolumeList, error)
 	PersistentVolumeClaimsGet(pvcName string, pvcNamespace string) (*v1.PersistentVolumeClaim, error)
+	PersistentVolumeDelete(persistentVolumeName string) error
 }
 
 type clientsetimpl struct {
@@ -48,4 +49,9 @@ func (c *clientsetimpl) PersistentVolumesList() (*v1.PersistentVolumeList, error
 
 func (c *clientsetimpl) PersistentVolumeClaimsGet(pvcName string, pvcNamespace string) (*v1.PersistentVolumeClaim, error) {
 	return c.clientset.CoreV1().PersistentVolumeClaims(pvcNamespace).Get(pvcName, metav1.GetOptions{})
+}
+
+func (c *clientsetimpl) PersistentVolumeDelete(persistentVolumeName string) error {
+	err := c.clientset.CoreV1().PersistentVolumes().Delete(persistentVolumeName, &metav1.DeleteOptions{})
+	return err
 }
