@@ -53,11 +53,11 @@ func RemoveUnusedDisks(gcpDeleter *gcp.GCPDeleter, disks []string) {
 
 	for _, disk := range disks {
 		klog.Infof("Delete disk %s", disk)
-		/* 		err := gcpDeleter.DeleteResource("disk", disk)
-		   		if err != nil {
-		   			klog.Errorf("Failed to delete disk %s: %v", disk, err)
-		   			continue
-		   		} */
+		err := gcpDeleter.DeleteResource("disk", disk)
+		if err != nil {
+			klog.Errorf("Failed to delete disk %s: %v", disk, err)
+			continue
+		}
 	}
 
 }
@@ -67,10 +67,10 @@ func RemoveUnusedPVs(k8sDeleter *kubernetes.K8sDeleter, pvs []string) {
 	for _, PV := range pvs {
 		klog.Infof("Delete PV %s", PV)
 
-		/* 		err := k8sDeleter.DeleteResource(PV)
-		   		if err != nil {
-		   			klog.Errorf("Failed to delete PV %s: %v", PV, err)
-		   			continue
-		   		} */
+		err := k8sDeleter.DeleteResource(PV)
+		if err != nil {
+			klog.Errorf("Failed to delete PV %s: %v", PV, err)
+			continue
+		}
 	}
 }
