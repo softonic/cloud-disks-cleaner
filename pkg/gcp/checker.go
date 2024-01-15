@@ -24,19 +24,19 @@ func NewGCPChecker(service ComputeService, projectID string, zone string) (*GCPC
 	}, nil
 }
 
-func (c *GCPChecker) IsResourceUnused(resourceID string) (bool, error) {
+func (c *GCPChecker) IsResourceUnused(resourceID string) (bool, string, error) {
 	ctx := context.Background()
 
 	disk, err := c.service.DisksGet(ctx, c.projectID, c.zone, resourceID)
 	if err != nil {
-		return false, err // Si hay un error, retorna false y el error.
+		return false, "", err // Si hay un error, retorna false y el error.
 	}
 
 	// Verifica si el disco está en uso.
 	// En este ejemplo, supondremos que un disco se considera en uso si tiene usuarios asociados.
 	isUnused := len(disk.Users) == 0
 
-	return isUnused, nil // Retorna el resultado de la verificación y nil para el error.
+	return isUnused, resourceID, nil // Retorna el resultado de la verificación y nil para el error.
 }
 
 func (c *GCPChecker) ListResources() ([]interface{}, error) {
